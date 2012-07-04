@@ -2,12 +2,11 @@ package sqlite3
 
 // #include <sqlite3.h>
 import "C"
-import "os"
 
 type Statement struct {
-	db			*Database
-	cptr		*C.sqlite3_stmt
-	timestamp	int64
+	db        *Database
+	cptr      *C.sqlite3_stmt
+	timestamp int64
 }
 
 func (s *Statement) Parameters() int {
@@ -37,7 +36,7 @@ func (s *Statement) Row() (values []interface{}) {
 	return
 }
 
-func (s *Statement) Bind(start_column int, values... interface{}) (e os.Error, index int) {
+func (s *Statement) Bind(start_column int, values ...interface{}) (e error, index int) {
 	column := QueryParameter(start_column)
 	for i, v := range values {
 		column++
@@ -49,7 +48,7 @@ func (s *Statement) Bind(start_column int, values... interface{}) (e os.Error, i
 	return
 }
 
-func (s *Statement) BindAll(values... interface{}) (e os.Error, index int) {
+func (s *Statement) BindAll(values ...interface{}) (e error, index int) {
 	return s.Bind(0, values...)
 }
 
@@ -60,14 +59,14 @@ func (s *Statement) SQLSource() (sql string) {
 	return
 }
 
-func (s *Statement) Finalize() os.Error {
+func (s *Statement) Finalize() error {
 	if e := Errno(C.sqlite3_finalize(s.cptr)); e != OK {
 		return e
 	}
 	return nil
 }
 
-func (s *Statement) Step(f... func(*Statement, ...interface{})) (e os.Error) {
+func (s *Statement) Step(f ...func(*Statement, ...interface{})) (e error) {
 	r := Errno(C.sqlite3_step(s.cptr))
 	switch r {
 	case DONE:
@@ -76,9 +75,12 @@ func (s *Statement) Step(f... func(*Statement, ...interface{})) (e os.Error) {
 		if f != nil {
 			defer func() {
 				switch x := recover().(type) {
-				case nil:		e = ROW
-				case os.Error:	e = x
-				default:		e = MISUSE
+				case nil:
+					e = ROW
+				case error:
+					e = x
+				default:
+					e = MISUSE
 				}
 			}()
 			r := s.Row()
@@ -92,7 +94,7 @@ func (s *Statement) Step(f... func(*Statement, ...interface{})) (e os.Error) {
 	return
 }
 
-func (s *Statement) All(f... func(*Statement, ...interface{})) (c int, e os.Error) {
+func (s *Statement) All(f ...func(*Statement, ...interface{})) (c int, e error) {
 	for {
 		if e = s.Step(f...); e != nil {
 			if r, ok := e.(Errno); ok {
@@ -115,14 +117,14 @@ func (s *Statement) All(f... func(*Statement, ...interface{})) (c int, e os.Erro
 	return
 }
 
-func (s *Statement) Reset() os.Error {
+func (s *Statement) Reset() error {
 	if e := Errno(C.sqlite3_reset(s.cptr)); e != OK {
 		return e
 	}
 	return nil
 }
 
-func (s *Statement) ClearBindings() os.Error {
+func (s *Statement) ClearBindings() error {
 	if e := Errno(C.sqlite3_clear_bindings(s.cptr)); e != OK {
 		return e
 	}

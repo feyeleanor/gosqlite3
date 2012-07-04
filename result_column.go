@@ -4,17 +4,16 @@ package sqlite3
 import "C"
 
 import "bytes"
-import "gob"
+import "encoding/gob"
 import "unsafe"
 
-const(
+const (
 	INTEGER = 1
-	FLOAT = 2
-	TEXT = 3
-	BLOB = 4
-	NULL = 5
+	FLOAT   = 2
+	TEXT    = 3
+	BLOB    = 4
+	NULL    = 5
 )
-
 
 type ResultColumn int
 
@@ -25,7 +24,7 @@ func (c ResultColumn) make_buffer(s *Statement, addr interface{}) (buffer string
 	case unsafe.Pointer:
 		buffer = C.GoStringN((*C.char)(addr), C.int(c.ByteCount(s)))
 	}
-	return 
+	return
 }
 
 func (c ResultColumn) Name(s *Statement) string {

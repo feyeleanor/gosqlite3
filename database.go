@@ -3,9 +3,8 @@ package sqlite3
 // #include <sqlite3.h>
 import "C"
 import "fmt"
-import "os"
+
 import "strconv"
-import "syscall"
 import "time"
 
 type Errno int
@@ -14,11 +13,15 @@ func (e Errno) String() (err string) {
 	if err = errText[e]; err == "" {
 		err = fmt.Sprintf("errno %v", int(e))
 	}
-	return 
+	return
 }
 
-const(
-	OK			= Errno(iota)
+func (e Errno) Error() (err string) {
+	return e.String()
+}
+
+const (
+	OK = Errno(iota)
 	ERROR
 	INTERNAL
 	PERM
@@ -45,57 +48,57 @@ const(
 	FORMAT
 	RANGE
 	NOTDB
-	ROW			= Errno(100)
-	DONE		= Errno(101)
-	ENCODER		= Errno(1000)
-	SAVEPOINT	= Errno(1001)
+	ROW       = Errno(100)
+	DONE      = Errno(101)
+	ENCODER   = Errno(1000)
+	SAVEPOINT = Errno(1001)
 )
 
-var errText = map[Errno]string {
-	ERROR:		"SQL error or missing database",
-	INTERNAL:	"Internal logic error in SQLite",
-	PERM:		"Access permission denied",
-	ABORT:		"Callback routine requested an abort",
-	BUSY:		"The database file is locked",
-	LOCKED:		"A table in the database is locked",
-	NOMEM:		"A malloc() failed",
-	READONLY:	"Attempt to write a readonly database",
-	INTERRUPT:	"Operation terminated by sqlite3_interrupt()",
-	IOERR:		"Some kind of disk I/O error occurred",
-	CORRUPT:	"The database disk image is malformed",
-	NOTFOUND:	"NOT USED. Table or record not found",
-	FULL:		"Insertion failed because database is full",
-	CANTOPEN:	"Unable to open the database file",
-	PROTOCOL:	"NOT USED. Database lock protocol error",
-	EMPTY:		"Database is empty",
-	SCHEMA:		"The database schema changed",
-	TOOBIG:		"String or BLOB exceeds size limit",
-	CONSTRAINT:	"Abort due to constraint violation",
-	MISMATCH:	"Data type mismatch",
-	MISUSE:		"Library used incorrectly",
-	NOLFS:		"Uses OS features not supported on host",
-	AUTH:		"Authorization denied",
-	FORMAT:		"Auxiliary database format error",
-	RANGE:		"2nd parameter to sqlite3_bind out of range",
-	NOTDB:		"File opened that is not a database file",
-	ROW:		"sqlite3_step() has another row ready",
-	DONE:		"sqlite3_step() has finished executing",
-	ENCODER:	"blob encoding failed",
-	SAVEPOINT:	"invalid or unknown savepoint identifier",
+var errText = map[Errno]string{
+	ERROR:      "SQL error or missing database",
+	INTERNAL:   "Internal logic error in SQLite",
+	PERM:       "Access permission denied",
+	ABORT:      "Callback routine requested an abort",
+	BUSY:       "The database file is locked",
+	LOCKED:     "A table in the database is locked",
+	NOMEM:      "A malloc() failed",
+	READONLY:   "Attempt to write a readonly database",
+	INTERRUPT:  "Operation terminated by sqlite3_interrupt()",
+	IOERR:      "Some kind of disk I/O error occurred",
+	CORRUPT:    "The database disk image is malformed",
+	NOTFOUND:   "NOT USED. Table or record not found",
+	FULL:       "Insertion failed because database is full",
+	CANTOPEN:   "Unable to open the database file",
+	PROTOCOL:   "NOT USED. Database lock protocol error",
+	EMPTY:      "Database is empty",
+	SCHEMA:     "The database schema changed",
+	TOOBIG:     "String or BLOB exceeds size limit",
+	CONSTRAINT: "Abort due to constraint violation",
+	MISMATCH:   "Data type mismatch",
+	MISUSE:     "Library used incorrectly",
+	NOLFS:      "Uses OS features not supported on host",
+	AUTH:       "Authorization denied",
+	FORMAT:     "Auxiliary database format error",
+	RANGE:      "2nd parameter to sqlite3_bind out of range",
+	NOTDB:      "File opened that is not a database file",
+	ROW:        "sqlite3_step() has another row ready",
+	DONE:       "sqlite3_step() has finished executing",
+	ENCODER:    "blob encoding failed",
+	SAVEPOINT:  "invalid or unknown savepoint identifier",
 }
 
 type Database struct {
-	handle		*C.sqlite3
-	Filename	string
-	Flags		C.int
-	Savepoints	[]interface{}
+	handle     *C.sqlite3
+	Filename   string
+	Flags      C.int
+	Savepoints []interface{}
 }
 
 func TransientDatabase() (db *Database) {
-	return &Database{ Filename: ":memory:" }	
+	return &Database{Filename: ":memory:"}
 }
 
-func Open(filename string, flags... int) (db *Database, e os.Error) {
+func Open(filename string, flags ...int) (db *Database, e error) {
 	defer func() {
 		if x := recover(); x != nil {
 			db.Close()
@@ -103,7 +106,7 @@ func Open(filename string, flags... int) (db *Database, e os.Error) {
 			e = MISUSE
 		}
 	}()
-	db = &Database{ Filename: filename }
+	db = &Database{Filename: filename}
 	if len(flags) == 0 {
 		e = db.Open(C.SQLITE_OPEN_FULLMUTEX, C.SQLITE_OPEN_READWRITE, C.SQLITE_OPEN_CREATE)
 	} else {
@@ -112,7 +115,7 @@ func Open(filename string, flags... int) (db *Database, e os.Error) {
 	return
 }
 
-func (db *Database) Open(flags... int) (e os.Error) {
+func (db *Database) Open(flags ...int) (e error) {
 	if C.sqlite3_threadsafe() == 0 {
 		panic("sqlite library is not thread-safe")
 	}
@@ -120,7 +123,9 @@ func (db *Database) Open(flags... int) (e os.Error) {
 		e = CANTOPEN
 	} else {
 		db.Flags = 0
-		for _, v := range flags { db.Flags = db.Flags | C.int(v) }
+		for _, v := range flags {
+			db.Flags = db.Flags | C.int(v)
+		}
 		if err := Errno(C.sqlite3_open_v2(C.CString(db.Filename), &db.handle, db.Flags, nil)); err != OK {
 			e = err
 		} else if db.handle == nil {
@@ -147,12 +152,12 @@ func (db *Database) TotalChanges() int {
 	return int(C.sqlite3_total_changes(db.handle))
 }
 
-func (db *Database) Error() os.Error {
+func (db *Database) Error() error {
 	return Errno(C.sqlite3_errcode(db.handle))
 }
 
-func (db *Database) Prepare(sql string, values... interface{}) (s *Statement, e os.Error) {
-	s = &Statement{ db: db, timestamp: time.Nanoseconds() }
+func (db *Database) Prepare(sql string, values ...interface{}) (s *Statement, e error) {
+	s = &Statement{db: db, timestamp: time.Now().Unix()}
 	if rv := Errno(C.sqlite3_prepare_v2(db.handle, C.CString(sql), -1, &s.cptr, nil)); rv != OK {
 		s, e = nil, rv
 	} else {
@@ -163,8 +168,8 @@ func (db *Database) Prepare(sql string, values... interface{}) (s *Statement, e 
 	return
 }
 
-func (db *Database) Execute(sql string, f... func(*Statement, ...interface{})) (c int, e os.Error) {
-	var st	*Statement
+func (db *Database) Execute(sql string, f ...func(*Statement, ...interface{})) (c int, e error) {
+	var st *Statement
 	st, e = db.Prepare(sql)
 	if e == nil {
 		c, e = st.All(f...)
@@ -175,34 +180,40 @@ func (db *Database) Execute(sql string, f... func(*Statement, ...interface{})) (
 	return
 }
 
-func (db *Database) Begin() (e os.Error) {
+func (db *Database) Begin() (e error) {
 	_, e = db.Execute("BEGIN")
 	return
 }
 
-func (db *Database) Rollback() (e os.Error) {
+func (db *Database) Rollback() (e error) {
 	_, e = db.Execute("ROLLBACK")
 	return
 }
 
-func (db *Database) Commit() (e os.Error) {
+func (db *Database) Commit() (e error) {
 	_, e = db.Execute("COMMIT")
 	return
 }
 
 func savepointID(id interface{}) (s string) {
 	switch id := id.(type) {
-	case string:		s = id
-	case []byte:		s = string(id)
-	case fmt.Stringer:	s = id.String()
-	case int:			s = strconv.Itoa(id)
-	case uint:			s = strconv.Uitoa(id)
-	default:			panic(SAVEPOINT)
+	case string:
+		s = id
+	case []byte:
+		s = string(id)
+	case fmt.Stringer:
+		s = id.String()
+	case int:
+		s = strconv.Itoa(id)
+	case uint:
+		s = strconv.FormatUint(uint64(id), 10)
+	default:
+		panic(SAVEPOINT)
 	}
 	return
 }
 
-func (db *Database) Mark(id interface{}) (e os.Error) {
+func (db *Database) Mark(id interface{}) (e error) {
 	if st, err := db.Prepare("SAVEPOINT ?", savepointID(id)); err == nil {
 		_, e = st.All()
 	} else {
@@ -211,7 +222,7 @@ func (db *Database) Mark(id interface{}) (e os.Error) {
 	return
 }
 
-func (db *Database) MergeSteps(id interface{}) (e os.Error) {
+func (db *Database) MergeSteps(id interface{}) (e error) {
 	if st, err := db.Prepare("RELEASE SAVEPOINT ?", savepointID(id)); err == nil {
 		_, e = st.All()
 	} else {
@@ -220,7 +231,7 @@ func (db *Database) MergeSteps(id interface{}) (e os.Error) {
 	return
 }
 
-func (db *Database) Release(id interface{}) (e os.Error) {
+func (db *Database) Release(id interface{}) (e error) {
 	if st, err := db.Prepare("ROLLBACK TRANSACTION TO SAVEPOINT ?", savepointID(id)); err == nil {
 		_, e = st.All()
 	} else {
@@ -235,32 +246,32 @@ func (db *Database) SavePoints() (s []interface{}) {
 	return
 }
 
-func (db *Database) Load(source *Database, dbname string) (e os.Error) {
+func (db *Database) Load(source *Database, dbname string) (e error) {
 	if dbname == "" {
 		dbname = "main"
 	}
 	if backup, rv := NewBackup(db, dbname, source, dbname); rv == nil {
 		e = backup.Full()
-   	} else {
+	} else {
 		e = rv
 	}
 	return
 }
 
-func (db *Database) Save(target *Database, dbname string) (e os.Error) {
+func (db *Database) Save(target *Database, dbname string) (e error) {
 	return target.Load(db, dbname)
 }
 
 type Reporter chan *ProgressReport
 
 type BackupParameters struct {
-	Target			string
-	PagesPerStep	int
-	QueueLength		int
-	Interval		int64
+	Target       string
+	PagesPerStep int
+	QueueLength  int
+	Interval     int64
 }
 
-func (db *Database) Backup(p BackupParameters) (r Reporter, e os.Error) {
+func (db *Database) Backup(p BackupParameters) (r Reporter, e error) {
 	if target, e := Open(p.Target); e == nil {
 		if backup, e := NewBackup(target, "main", db, "main"); e == nil && p.PagesPerStep > 0 {
 			r = make(Reporter, p.QueueLength)
@@ -270,18 +281,18 @@ func (db *Database) Backup(p BackupParameters) (r Reporter, e os.Error) {
 				defer close(r)
 				for {
 					report := &ProgressReport{
-								Source: db.Filename,
-								Target: p.Target,
-								Error: backup.Step(p.PagesPerStep),
-								Total: backup.PageCount(),
-								Remaining: backup.Remaining(),
-								}
+						Source:    db.Filename,
+						Target:    p.Target,
+						Error:     backup.Step(p.PagesPerStep),
+						Total:     backup.PageCount(),
+						Remaining: backup.Remaining(),
+					}
 					r <- report
 					if e, ok := report.Error.(Errno); ok && !(e == OK || e == BUSY || e == LOCKED) {
 						break
 					}
 					if p.Interval > 0 {
-						syscall.Sleep(p.Interval)
+						time.Sleep(time.Duration(p.Interval) * time.Second)
 					}
 				}
 			}()

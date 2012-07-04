@@ -10,20 +10,21 @@ package sqlite3
 import "C"
 
 import "bytes"
-import "gob"
-import "os"
+import "encoding/gob"
+
 import "unsafe"
 
 type QueryParameter int
-func (p QueryParameter) bind_blob(s *Statement, v []byte) os.Error {
+
+func (p QueryParameter) bind_blob(s *Statement, v []byte) error {
 	if e := Errno(C.gosqlite3_bind_blob(s.cptr, C.int(p), unsafe.Pointer(C.CString(string(v))), C.int(len(v)))); e != OK {
 		return e
 	}
 	return nil
 }
 
-func (p QueryParameter) Bind(s *Statement, value interface{}) (e os.Error) {
-	var rv	Errno
+func (p QueryParameter) Bind(s *Statement, value interface{}) (e error) {
+	var rv Errno
 	switch v := value.(type) {
 	case nil:
 		rv = Errno(C.sqlite3_bind_null(s.cptr, C.int(p)))

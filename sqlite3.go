@@ -8,7 +8,7 @@ func Initialize() {
 	C.sqlite3_initialize()
 }
 
-func Shutdown()	{
+func Shutdown() {
 	C.sqlite3_shutdown()
 }
 

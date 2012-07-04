@@ -1,9 +1,8 @@
 package sqlite3
 
 import "bytes"
-import "gob"
+import "encoding/gob"
 import "testing"
-
 
 func TestGeneral(t *testing.T) {
 	Initialize()
@@ -26,10 +25,10 @@ func TestBlob(t *testing.T) {
 
 		buffer := new(bytes.Buffer)
 		encoder := gob.NewEncoder(buffer)
-		fatalOnError(t, encoder.Encode(TwoItems{ "holy", "moly guacomole" }), "Encoding failed: buffer = %v", buffer)
+		fatalOnError(t, encoder.Encode(TwoItems{"holy", "moly guacomole"}), "Encoding failed: buffer = %v", buffer)
 		t.Logf("Encoded data: %v", buffer.Bytes())
 
-		db.runQuery(t, "INSERT INTO bar values (?, ?)", 1, TwoItems{ "holy moly", "guacomole" })
+		db.runQuery(t, "INSERT INTO bar values (?, ?)", 1, TwoItems{"holy moly", "guacomole"})
 		db.stepThroughRows(t, BAR)
 	})
 }

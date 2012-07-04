@@ -12,7 +12,6 @@ func TestSession(t *testing.T) {
 	})
 }
 
-
 func TestTransientSession(t *testing.T) {
 	TransientSession(func(db *Database) {
 		FOO.Drop(db)

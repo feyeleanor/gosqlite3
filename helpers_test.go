@@ -1,42 +1,41 @@
 package sqlite3
 
 import "fmt"
-import "gob"
-import "os"
+import "encoding/gob"
+
 import "testing"
 
-
-var FOO	*Table
+var FOO *Table
 var BAR *Table
 
 func init() {
-	FOO = &Table{ "foo", "number INTEGER, text VARCHAR(20)" }
- 	BAR = &Table{ "bar", "number INTEGER, value BLOB" }
+	FOO = &Table{"foo", "number INTEGER, text VARCHAR(20)"}
+	BAR = &Table{"bar", "number INTEGER, value BLOB"}
 }
 
 type TwoItems struct {
-	Number		string
-	Text		string
+	Number string
+	Text   string
 }
 
 func (t *TwoItems) String() string {
 	return "[" + t.Number + " : " + t.Text + "]"
 }
 
-func fatalOnError(t *testing.T, e os.Error, message string, parameters... interface{}) {
+func fatalOnError(t *testing.T, e error, message string, parameters ...interface{}) {
 	if e != nil {
 		t.Fatalf("%v : %v", e, fmt.Sprintf(message, parameters...))
 	}
 }
 
-func fatalOnSuccess(t *testing.T, e os.Error, message string, parameters... interface{}) {
+func fatalOnSuccess(t *testing.T, e error, message string, parameters ...interface{}) {
 	if e == nil {
 		t.Fatalf("%v : %v", e, fmt.Sprintf(message, parameters...))
 	}
 }
 
 func (db *Database) stepThroughRows(t *testing.T, table *Table) (c int) {
-	var e	os.Error
+	var e error
 	sql := fmt.Sprintf("SELECT * from %v;", table.Name)
 	c, e = db.Execute(sql, func(st *Statement, values ...interface{}) {
 		data := values[1]
@@ -56,7 +55,7 @@ func (db *Database) stepThroughRows(t *testing.T, table *Table) (c int) {
 	return
 }
 
-func (db *Database) runQuery(t *testing.T, sql string, params... interface{}) {
+func (db *Database) runQuery(t *testing.T, sql string, params ...interface{}) {
 	st, e := db.Prepare(sql, params...)
 	fatalOnError(t, e, st.SQLSource())
 	st.Step()
@@ -74,7 +73,7 @@ func (db *Database) populate(t *testing.T, table *Table) {
 	case "bar":
 		db.runQuery(t, "INSERT INTO bar values (1, 'this is a test')")
 		db.runQuery(t, "INSERT INTO bar values (?, ?)", 2, "holy moly")
-		db.runQuery(t, "INSERT INTO bar values (?, ?)", 3, TwoItems{ "holy moly", "guacomole" })
+		db.runQuery(t, "INSERT INTO bar values (?, ?)", 3, TwoItems{"holy moly", "guacomole"})
 		if c, _ := table.Rows(db); c != 3 {
 			t.Fatal("Failed to populate %v", table.Name)
 		}
